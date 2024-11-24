@@ -29,7 +29,7 @@ def read_proxy(sequence_number: int):
     """Получение прокси из файла"""
 
     # Получаем содержимое файла
-    with open('proxi.json', 'r') as f:
+    with open('proxy.json', 'r') as f:
         proxi = json.load(f)
 
     return proxi[sequence_number]
