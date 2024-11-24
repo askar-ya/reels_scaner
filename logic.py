@@ -32,7 +32,7 @@ def read_proxy(sequence_number: int):
     with open('proxy.json', 'r') as f:
         proxi = json.load(f)
 
-    return proxi[sequence_number]
+    return proxi[sequence_number]['proxy']
 
 
 def clean_out_excel():
