@@ -275,7 +275,7 @@ def pars_account(account_name: str, q_count: int):
                 print(f'всего получено: {n * 12} видео, валидных: {len(reels)}')
                 return {'ok': True, 'data': reels}
             n += 1
-            print(f'Получено: {n * 12} видео', end='\r')
+            print(f'Получено: {n * 12} видео')
         else:
             return {'ok': False, 'error': response.status_code}
 
