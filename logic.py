@@ -379,7 +379,7 @@ class ParsAccountReels:
 
         # Проверяем конец-ли это
         self.order = 1
-        if check_end(first_request):
+        if check_end(first_request['res']):
             print(f'всего получено: {self.order * 12} видео, валидных: {len(self.reels)}')
             return {'ok': True, 'data': self.reels}
 
