@@ -81,33 +81,6 @@ def load_patterns():
         return json.load(f)
 
 
-def param_from_html(html: str) -> dict:
-    """Получаем аргументы из html"""
-    args = {
-        'x_bloks_version_id': r'."versioningID":"(.*?)"',
-        'lsd': r'"LSD",.*?,."token":"(.*?)"',
-        'app_id': r',"APP_ID":"(.*?)"',
-        'av': r'actorID":"(.*?)"',
-        'rev': r'"rev":(.*?).,',
-        '__hsi': r',"hsi":"(.*?)"',
-        'fb_dtsg': r'."DTSGInitialData",..,."token":"(.*?)"',
-        'jazoest': r'&jazoest=(.*?)"',
-        '__spin_r': r'"__spin_r":(.*?),',
-        '__spin_b': r',"__spin_b":"(.*?)",',
-        '__spin_t': r',"__spin_t":(.*?),',
-        'target_id': r'"target_id":"(.*?)"'
-    }
-
-    try:
-        for parm in args:
-            new = re.search(args[parm], html, flags=re.DOTALL | re.MULTILINE).group(1)
-            args[parm] = new
-
-        return {'ok': True, 'args': args}
-    except Exception as e:
-        return {'ok': False, 'msg': str(e)}
-
-
 def insert_params_in_data(parameters: dict):
     """Вставляем аргументы в data запроса"""
     patterns = load_patterns()
@@ -270,6 +243,35 @@ class ParsAccountReels:
             return self.get_base_html()
 
 
+    def param_from_html(self, html) -> dict:
+        """Получаем аргументы из html"""
+        args = {
+            'x_bloks_version_id': r'."versioningID":"(.*?)"',
+            'lsd': r'"LSD",.*?,."token":"(.*?)"',
+            'app_id': r',"APP_ID":"(.*?)"',
+            'av': r'actorID":"(.*?)"',
+            'rev': r'"rev":(.*?).,',
+            '__hsi': r',"hsi":"(.*?)"',
+            'fb_dtsg': r'."DTSGInitialData",..,."token":"(.*?)"',
+            'jazoest': r'&jazoest=(.*?)"',
+            '__spin_r': r'"__spin_r":(.*?),',
+            '__spin_b': r',"__spin_b":"(.*?)",',
+            '__spin_t': r',"__spin_t":(.*?),',
+            'target_id': r'"target_id":"(.*?)"'
+        }
+
+        try:
+            for parm in args:
+                new = re.search(args[parm], html, flags=re.DOTALL | re.MULTILINE).group(1)
+                args[parm] = new
+
+            return args
+        except Exception as e:
+            print(e)
+            self.reload_session()
+            html = self.get_base_html()
+            return self.param_from_html(html)
+
     def first_videos(self, parameters) -> dict:
         headers = self.insert_params_in_headers(parameters,
                                            self.patterns['headers_for_html']['referer'])
@@ -361,22 +363,15 @@ class ParsAccountReels:
         base_html = self.get_base_html()
 
         # Пробуем получить доп параметры для запроса рилсов
-        parameters = param_from_html(base_html)
-        if parameters['ok']:
-            parameters = parameters['args']
-        else:
-            return {'ok': False, 'error': 'account'}
-
+        parameters = self.param_from_html(base_html)
 
         first_request = self.first_videos(parameters)
-
 
         if first_request['ok']:
             videos = data_headers(first_request['res'], self.q_count)
             self.reels.extend(videos)
         else:
             return {'ok': False, 'error': first_request['error']}
-
 
         # Проверяем конец-ли это
         self.order = 1
