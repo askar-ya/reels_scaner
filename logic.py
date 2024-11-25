@@ -10,6 +10,7 @@ import openpyxl
 from openpyxl import load_workbook
 from openpyxl.writer.excel import save_workbook
 
+
 TIME_OUT = 30
 MAX_REDIRECT = 50
 
@@ -156,7 +157,7 @@ class ParsAccountReels:
         self.reels = []
         self.order = 0
 
-    def swap_work_profile(self, status: str):
+    async def swap_work_profile(self, status: str):
         """Меняет рабочий аккаунт"""
 
         with open("cookies.json", 'w', encoding='utf-8', ) as f:
@@ -171,9 +172,9 @@ class ParsAccountReels:
                 json.dump(accounts, f) # обновляем файл
 
         self.profile_cookies = load_work_profile() # Обновляем рабочий аккаунт
-        self.reload_session()
+        await self.reload_session()
 
-    def change_proxy(self):
+    async def change_proxy(self):
         """Меняет рабочий прокси"""
 
         with open("proxy.json", 'w', encoding='utf-8', ) as f:
@@ -188,7 +189,7 @@ class ParsAccountReels:
 
         self.proxy = get_proxy() # Обновляем рабочий прокси
 
-    def reload_session(self):
+    async def reload_session(self):
         """Перезагружает сессию"""
 
         self.session.close() # Закрываем текущею
@@ -199,7 +200,7 @@ class ParsAccountReels:
         ) # Монтируем адаптер
         self.session.proxies.update(self.proxy) # Включаем прокси
 
-    def insert_params_in_headers(self, parameters: dict, referer) -> dict:
+    async def insert_params_in_headers(self, parameters: dict, referer) -> dict:
         """Вставляем аргументы в headers запроса"""
         patterns = self.patterns
         cookies = self.profile_cookies
@@ -211,7 +212,7 @@ class ParsAccountReels:
         headers_for_reels['x-ig-app-id'] = parameters['app_id']
         return headers_for_reels
 
-    def get_base_html(self):
+    async def get_base_html(self):
         """Получаем базовый html аккаунта, для дальнейших запросов"""
 
         # получаем все заголовки для запроса
@@ -227,13 +228,13 @@ class ParsAccountReels:
             return self.get_base_html()
         except requests.exceptions.ConnectionError:
             print('account time ban\n')
-            self.change_proxy()
-            self.swap_work_profile('time_ban')
-            return self.get_base_html()
+            await self.change_proxy()
+            await self.swap_work_profile('time_ban')
+            return await self.get_base_html()
         except requests.exceptions.TooManyRedirects:
-            self.change_proxy()
-            self.reload_session()
-            return self.get_base_html()
+            await self.change_proxy()
+            await self.reload_session()
+            return await self.get_base_html()
 
 
         # проверяем статус ответа
@@ -243,12 +244,12 @@ class ParsAccountReels:
         elif base.status_code in [560, 572]:
             # если рабочий аккаунт заблокирован, меняем его
             print('\nwork account baned')
-            self.change_proxy()
-            self.swap_work_profile('full_ban')
+            await self.change_proxy()
+            await self.swap_work_profile('full_ban')
             return self.get_base_html()
 
 
-    def param_from_html(self, html) -> dict:
+    async def param_from_html(self, html) -> dict:
         """Получаем аргументы из html"""
         args = {
             'x_bloks_version_id': r'."versioningID":"(.*?)"',
@@ -273,13 +274,13 @@ class ParsAccountReels:
             return args
         except Exception as e:
             print(e)
-            self.swap_work_profile('time_ban')
-            self.reload_session()
-            html = self.get_base_html()
-            return self.param_from_html(html)
+            await self.swap_work_profile('time_ban')
+            await self.reload_session()
+            html = await self.get_base_html()
+            return await self.param_from_html(html)
 
-    def first_videos(self, parameters) -> dict:
-        headers = self.insert_params_in_headers(parameters,
+    async def first_videos(self, parameters) -> dict:
+        headers = await self.insert_params_in_headers(parameters,
                                            self.patterns['headers_for_html']['referer'])
         data = insert_params_in_data(parameters)
 
@@ -290,12 +291,12 @@ class ParsAccountReels:
                 cookies=self.profile_cookies, headers=headers, data=data, timeout=self.time_out)
         except requests.exceptions.Timeout:
             print('\ntimout')
-            return self.first_videos(parameters)
+            return await self.first_videos(parameters)
         except requests.exceptions.ConnectionError:
             print('account time ban\n')
-            self.change_proxy()
-            self.swap_work_profile('time_ban')
-            return self.first_videos(parameters)
+            await self.change_proxy()
+            await self.swap_work_profile('time_ban')
+            return await self.first_videos(parameters)
 
         # Проверяем статус запроса
         if first.status_code == 200:
@@ -303,8 +304,8 @@ class ParsAccountReels:
         elif first.status_code in [560, 572]:
             # если рабочий аккаунт заблокирован, меняем его
             print('\nwork account baned')
-            self.swap_work_profile('full_ban')
-            return self.first_videos(parameters)
+            await self.swap_work_profile('full_ban')
+            return await self.first_videos(parameters)
         else:
             return {'ok': False, 'error': first.status_code}
 
@@ -313,14 +314,14 @@ class ParsAccountReels:
             return {'ok': True, 'res': first}
         except requests.exceptions.JSONDecodeError:
             print('\naccount time ban')
-            self.swap_work_profile('time_ban')
-            return self.first_videos(parameters)
+            await self.swap_work_profile('time_ban')
+            return await self.first_videos(parameters)
 
 
-    def subsequent_videos(self, parameters, cur) -> dict:
+    async def subsequent_videos(self, parameters, cur) -> dict:
         data = insert_params_in_data(parameters)
         data = insert_cur(data, cur, parameters['target_id'])
-        headers = self.insert_params_in_headers(parameters,
+        headers = await self.insert_params_in_headers(parameters,
                                            self.patterns['headers_for_html']['referer'])
 
         # Делаем запрос для получения следующих 12ти видео
@@ -330,12 +331,12 @@ class ParsAccountReels:
                 cookies=self.profile_cookies, headers=headers, data=data, timeout=self.time_out)
         except requests.exceptions.Timeout:
             print('\ntimout')
-            return self.subsequent_videos(parameters, cur)
+            return await self.subsequent_videos(parameters, cur)
 
         except requests.exceptions.ConnectionError:
             print('account time ban\n')
-            self.change_proxy()
-            self.swap_work_profile('time_ban')
+            await self.change_proxy()
+            await self.swap_work_profile('time_ban')
             response = self.subsequent_videos(parameters, data)
 
         # Проверяем статус запроса
@@ -365,13 +366,13 @@ class ParsAccountReels:
             return {'ok': False, 'error': response.status_code, 'next': False}
 
 
-    def pars(self) -> dict:
-        base_html = self.get_base_html()
+    async def pars(self) -> dict:
+        base_html = await self.get_base_html()
 
         # Пробуем получить доп параметры для запроса рилсов
-        parameters = self.param_from_html(base_html)
+        parameters = await self.param_from_html(base_html)
 
-        first_request = self.first_videos(parameters)
+        first_request = await self.first_videos(parameters)
 
         if first_request['ok']:
             videos = data_headers(first_request['res'], self.q_count)
@@ -390,7 +391,7 @@ class ParsAccountReels:
 
         while True:
             # Получаем курсор для следующего запроса
-            subsequent_requests = self.subsequent_videos(parameters, self.cur)
+            subsequent_requests = await self.subsequent_videos(parameters, self.cur)
             if subsequent_requests['ok'] and subsequent_requests['next']:
                 self.cur = subsequent_requests['res'].json()['data'][
                     'xdt_api__v1__clips__user__connection_v2']['page_info']['end_cursor']
