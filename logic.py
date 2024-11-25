@@ -301,7 +301,7 @@ class ParsAccountReels:
 
         try:
             first.json()
-            return {'ok': False, 'res': first}
+            return {'ok': True, 'res': first}
         except requests.exceptions.JSONDecodeError:
             print('\naccount time ban')
             self.swap_work_profile('time_ban')
