@@ -264,7 +264,7 @@ def pars_account(account_name: str, q_count: int):
         # Делаем запрос для получения следующих 12ти видео
         response = session.post(
             'https://www.instagram.com/graphql/query',
-            cookies=cookies, headers=headers, data=data, proxies=proxies)
+            cookies=cookies, headers=headers, data=data, proxies=proxies, timeout=10)
 
 
         # Проверяем статус запроса
