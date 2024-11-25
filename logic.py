@@ -308,7 +308,7 @@ class ParsAccountReels:
             return self.first_videos(parameters)
 
 
-    def subsequent_videos(self, parameters, cur):
+    def subsequent_videos(self, parameters, cur) -> dict:
         data = insert_params_in_data(parameters)
         data = insert_cur(data, cur, parameters['target_id'])
         headers = self.insert_params_in_headers(parameters,
@@ -350,7 +350,7 @@ class ParsAccountReels:
                     print(f'всего получено: {self.order * 12} видео, валидных: {len(self.reels)}')
                     return {'ok': True, 'next': False, 'data': self.reels}
 
-            return response
+            return {'ok': True, 'res': response}
 
         else:
             return {'ok': False, 'error': response.status_code}
@@ -390,7 +390,7 @@ class ParsAccountReels:
             # Получаем курсор для следующего запроса
             subsequent_requests = self.subsequent_videos(parameters, self.cur)
             if subsequent_requests['ok'] and not subsequent_requests['next']:
-                self.cur = subsequent_requests.json()['data'][
+                self.cur = subsequent_requests['res'].json()['data'][
                     'xdt_api__v1__clips__user__connection_v2']['page_info']['end_cursor']
             else:
                 return {'ok': True, 'data': self.reels}
