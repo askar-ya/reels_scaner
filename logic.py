@@ -14,11 +14,11 @@ TIME_OUT = 30
 MAX_REDIRECT = 50
 
 
-def get_proxy():
+async def get_proxy():
     """Получение прокси из файла"""
 
     # Получаем содержимое файла
-    with open('proxy.json', 'r') as f:
+    with open('proxy.json', 'r', encoding='utf-8') as f:
         proxi = json.load(f)['ok']
 
     return random.choice(proxi)

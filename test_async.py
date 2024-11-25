@@ -42,12 +42,8 @@ async def main():
             task1 = asyncio.create_task(pars(users_for_pars[i]))
             task2 = asyncio.create_task(pars(users_for_pars[i+1]))
 
-            a = await task1
-            b = await task2
-            if a == 'exit':
-                break
-            if b == 'exit':
-                break
+            await task1
+            await task2
 
     except KeyboardInterrupt:
         print('программа была закрыта')
