@@ -1,5 +1,6 @@
 import json
 import re
+import random
 
 import requests
 from requests.adapters import HTTPAdapter
@@ -9,6 +10,8 @@ import openpyxl
 from openpyxl import load_workbook
 from openpyxl.writer.excel import save_workbook
 
+TIME_OUT = 30
+MAX_REDIRECT = 50
 
 def get_work_accounts():
     names = os.listdir('cookies')
@@ -25,20 +28,21 @@ def swap_account(account: dict):
         json.dump(account, f)
 
 
-def read_proxy(sequence_number: int):
+def get_proxy():
     """Получение прокси из файла"""
 
     # Получаем содержимое файла
     with open('proxy.json', 'r') as f:
-        proxi = json.load(f)
+        proxi = json.load(f)['ok']
 
-    return proxi[sequence_number]['proxy']
+    return random.choice(proxi)
 
 
 def clean_out_excel():
     """Если есть выходной файл Excel удаляет его и создает новый"""
     if os.path.exists('Reels.xlsx') is True:
         os.remove('Reels.xlsx')
+
 
 def read_setup() -> tuple:
     """Получает данные для парсинга"""
@@ -77,12 +81,12 @@ def wright_in_excel(reels, cur):
     return cur
 
 
-def load_cookies() -> dict:
+def load_work_profile() -> dict:
     """Загружает куки"""
     with open('cookies.json', 'r', encoding='utf-8') as f:
-        cookies = json.load(f)
+        cookies = json.load(f)['ok']
 
-    return {item['name']: item['value'] for item in cookies}
+    return random.choice(cookies)
 
 
 def load_patterns():
@@ -116,19 +120,6 @@ def param_from_html(html: str) -> dict:
         return {'ok': True, 'args': args}
     except Exception as e:
         return {'ok': False, 'msg': str(e)}
-
-
-def insert_params_in_headers(parameters: dict, referer) -> dict:
-    """Вставляем аргументы в headers запроса"""
-    patterns = load_patterns()
-    cookies = load_cookies()
-    headers_for_reels = patterns['headers_for_reels']
-    headers_for_reels['referer'] = referer
-    headers_for_reels['x-bloks-version-id'] = parameters['x_bloks_version_id']
-    headers_for_reels['x-csrftoken'] = cookies['csrftoken']
-    headers_for_reels['x-fb-lsd'] = parameters['lsd']
-    headers_for_reels['x-ig-app-id'] = parameters['app_id']
-    return headers_for_reels
 
 
 def insert_params_in_data(parameters: dict):
@@ -186,127 +177,211 @@ def check_end(res):
         return True
 
 
-def reload_session():
-    session = requests.Session()
+class ParsAccountReels:
+    def __init__(self, account_name: str, q_count: int):
 
-    adapter = HTTPAdapter(max_retries=50)
-    session.mount('https://', adapter)
-    proxies = read_proxy(0)
-    session.proxies.update(proxies)
-    return session
+        self.account_name = account_name
+        self.q_count = q_count
+        self.profile_cookies = load_work_profile()
+        self.proxy = load_work_profile()
+
+        self.max_retries = 25
+        self.time_out = 30
+
+        self.session = requests.Session()
+        self.session.mount('https://', HTTPAdapter(max_retries=self.max_retries))
+        self.session.proxies.update(self.proxy)
+
+        self.patterns = load_patterns()
+        self.cur = None
+        self.reels = []
+        self.order = 0
+
+    def swap_work_profile(self, status: str):
+        """Меняет рабочий аккаунт"""
+
+        with open("cookies.json", 'rw', encoding='utf-8', ) as f:
+            """Открываем файл с аккаунтами"""
+
+            accounts = json.load(f) # Загружаем список рабочих аккаунтов
+
+            # Проверяем статус аккаунта
+            if self.profile_cookies in accounts['ok']:
+                accounts['ok'].remove(self.profile_cookies) # добавляем в неактивные
+                accounts[status].append(self.profile_cookies)
+                json.dump(accounts, f) # обновляем файл
+
+        self.profile_cookies = load_work_profile() # Обновляем рабочий аккаунт
+        self.reload_session()
+
+    def change_proxy(self):
+        """Меняет рабочий прокси"""
+
+        with open("proxy.json", 'rw', encoding='utf-8', ) as f:
+            """Открываем файл с прокси"""
+            proxies = json.load(f) # Загружаем список прокси
+
+            # Проверяем не добавлен ли он уже в неактивные
+            if self.proxy in proxies['ok']:
+                proxies['ok'].remove(self.proxy) # добавляем в неактивные
+                json.dump(proxies, f) # обновляем файл
+
+        self.proxy = get_proxy() # Обновляем рабочий прокси
+
+    def reload_session(self):
+        """Перезагружает сессию"""
+
+        self.session.close() # Закрываем текущею
+        self.session = requests.Session() # Создаем новую сессию
+        self.session.mount(
+            'https://',
+            HTTPAdapter(max_retries=self.max_retries)
+        ) # Монтируем адаптер
+        self.session.proxies.update(self.proxy) # Включаем прокси
+
+    def insert_params_in_headers(self, parameters: dict, referer) -> dict:
+        """Вставляем аргументы в headers запроса"""
+        patterns = self.patterns
+        cookies = self.profile_cookies
+        headers_for_reels = patterns['headers_for_reels']
+        headers_for_reels['referer'] = referer
+        headers_for_reels['x-bloks-version-id'] = parameters['x_bloks_version_id']
+        headers_for_reels['x-csrftoken'] = cookies['csrftoken']
+        headers_for_reels['x-fb-lsd'] = parameters['lsd']
+        headers_for_reels['x-ig-app-id'] = parameters['app_id']
+        return headers_for_reels
+
+    def get_base_html(self):
+        """Получаем базовый html аккаунта, для дальнейших запросов"""
+
+        # получаем все заголовки для запроса
+        headers = self.patterns['headers_for_html']
+        headers['referer'] = headers['referer'].replace('name', self.account_name)
+
+        # запрос
+        base = self.session.get(f'https://www.instagram.com/{self.account_name}/reels/',
+                                cookies=self.profile_cookies, headers=headers, timeout=self.time_out)
+
+        # проверяем статус ответа
+        if base.status_code == 200:
+            # возвращаем базовый html
+            return base.text
+        elif base.status_code in [560, 572]:
+            # если рабочий аккаунт заблокирован, меняем его
+            print('work account baned')
+            self.swap_work_profile('full_ban')
+            return self.get_base_html()
 
 
-def pars_account(account_name: str, q_count: int):
-    """Прасинг всех видео с аккаунта"""
+    def first_videos(self, parameters):
+        headers = self.insert_params_in_headers(parameters,
+                                           self.patterns['headers_for_html']['referer'])
+        data = insert_params_in_data(parameters)
 
-    # получаем все заголовки для запроса
-    cookies = load_cookies()
-    patterns = load_patterns()
-    headers = patterns['headers_for_html']
-    headers['referer'] = headers['referer'].replace('name', account_name)
+        # Делаем запрос к api для получения первых 12ти видео
+        first = self.session.post(
+            'https://www.instagram.com/graphql/query',
+            cookies=self.profile_cookies, headers=headers, data=data)
+
+        # Проверяем статус запроса
+        if first.status_code == 200:
+            print(f'Получено: {12} видео', end='\r')
+        elif first.status_code in [560, 572]:
+            # если рабочий аккаунт заблокирован, меняем его
+            print('work account baned')
+            self.swap_work_profile('full_ban')
+            return self.first_videos(parameters)
+        else:
+            return {'ok': False, 'error': first.status_code}
+
+        try:
+            first.json()
+            return first
+        except requests.exceptions.JSONDecodeError:
+            print('account time ban')
+            self.swap_work_profile('time_ban')
+            return self.first_videos(parameters)
 
 
-    # запрашиваем базовый html
-    session = reload_session()
-    response = session.get(f'https://www.instagram.com/{account_name}/reels/',
-                           cookies=cookies, headers=headers)
-
-    # проверяем статус ответа
-    if response.status_code == 200:
-        print('base html - ok', end='\r')
-    if response.status_code in [560, 572]:
-        return {'ok': False}
-
-    # Если все ОК сохраняем страницу в переменной html
-    html = response.text
-
-    # Пробуем получить доп параметры для запроса рилсов
-    parameters = param_from_html(html)
-    if parameters['ok']:
-        parameters = parameters['args']
-    else:
-        return {'ok': False, 'error': 'account'}
-    headers = insert_params_in_headers(parameters, headers['referer'])
-    data = insert_params_in_data(parameters)
-
-    # создаем список для хранения валидных видео со страницы
-    reels = []
-
-    #Делаем запрос к api для получения первых 12ти видео
-    response = session.post(
-        'https://www.instagram.com/graphql/query',
-        cookies=cookies, headers=headers, data=data)
-
-    n = 1
-
-    # Проверяем статус запроса
-    if response.status_code == 200:
-        print(f'Получено: {n*12} видео', end='\r')
-    elif response.status_code in [560, 572]:
-        return {'ok': False}
-    else:
-        return {'ok': False, 'error': response.status_code}
-
-    try:
-        response.json()
-    except requests.exceptions.JSONDecodeError:
-        return {'ok': False, 'error': 'json'}
-
-    # Сохраняем валидные видео
-    videos = data_headers(response, q_count)
-    reels.extend(videos)
-
-    # Проверяем конец-ли это
-    if check_end(response):
-        print(f'всего получено: {n * 12} видео, валидных: {len(reels)}')
-        return {'ok': True, 'data': reels}
-
-    while True:
-        # Получаем курсор для следующего запроса
-        cur = response.json()['data']['xdt_api__v1__clips__user__connection_v2']['page_info']['end_cursor']
-
+    def subsequent_videos(self, parameters, cur):
+        data = insert_params_in_data(parameters)
         data = insert_cur(data, cur, parameters['target_id'])
+        headers = self.insert_params_in_headers(parameters,
+                                           self.patterns['headers_for_html']['referer'])
 
         # Делаем запрос для получения следующих 12ти видео
         try:
-            response = session.post(
+            response = self.session.post(
                 'https://www.instagram.com/graphql/query',
-                cookies=cookies, headers=headers, data=data, timeout=15)
+                cookies=self.profile_cookies, headers=headers, data=data, timeout=self.time_out)
+
         except requests.exceptions.ConnectionError:
-            print('reload session')
-            session.close()
-            session = reload_session()
-            response = session.post(
-                'https://www.instagram.com/graphql/query',
-                cookies=cookies, headers=headers, data=data, timeout=15)
+            print('account time ban')
+            self.change_proxy()
+            self.swap_work_profile('time_ban')
+            response = self.subsequent_videos(parameters, data)
 
         # Проверяем статус запроса
         if response.status_code == 200:
             try:
                 response.json()
             except requests.exceptions.JSONDecodeError:
-                print(f'всего получено: {n * 12} видео, валидных: {len(reels)}')
-                return {'ok': True, 'data': reels}
-            n += 1
-            print(f'Получено: {n * 12} видео')
+                print(f'всего получено: {self.order * 12} видео, валидных: {len(self.reels)}')
+                return {'ok': True, 'next': False, 'data': self.reels}
+            self.order += 1
+            print(f'Получено: {self.order * 12} видео')
+
+            if 'errors' in response.json():
+                print(f'всего получено: {self.order * 12} видео, валидных: {len(self.reels)}')
+                return {'ok': True, 'next': False, 'data': self.reels}
+
+            elif 'data' in response.json():
+                videos = data_headers(response, self.q_count)
+                self.reels.extend(videos)
+                if check_end(response):
+                    print(f'всего получено: {self.order * 12} видео, валидных: {len(self.reels)}')
+                    return {'ok': True, 'next': False, 'data': self.reels}
+
+            return response
+
         else:
             return {'ok': False, 'error': response.status_code}
 
-        if 'errors' in response.json():
-            print(f'всего получено: {n*12} видео, валидных: {len(reels)}')
-            return {'ok': True, 'data': reels}
 
-        elif 'data' in response.json():
-            videos = data_headers(response, q_count)
-            reels.extend(videos)
-            if check_end(response):
-                print(f'всего получено: {n * 12} видео, валидных: {len(reels)}')
-                return {'ok': True, 'data': reels}
+    def pars(self) -> dict:
+        base_html = self.get_base_html()
+
+        # Пробуем получить доп параметры для запроса рилсов
+        parameters = param_from_html(base_html)
+        if parameters['ok']:
+            parameters = parameters['args']
+        else:
+            return {'ok': False, 'error': 'account'}
 
 
-def update_setup(users, q_count):
-    text = f'{q_count}\n'
-    for name in users:
-        text += f'{name}\n'
-    with open('users_to_pars.txt', 'w', encoding='utf-8') as f:
-        f.write(text)
+        first_request = self.first_videos(parameters)
+        videos = data_headers(first_request, self.q_count)
+
+        if first_request['ok']:
+            self.reels.extend(videos)
+        else:
+            return {'ok': False, 'error': first_request['error']}
+
+
+        # Проверяем конец-ли это
+        self.order = 1
+        if check_end(first_request):
+            print(f'всего получено: {self.order * 12} видео, валидных: {len(self.reels)}')
+            return {'ok': True, 'data': self.reels}
+
+        self.cur = first_request.json()['data'][
+            'xdt_api__v1__clips__user__connection_v2']['page_info']['end_cursor']
+
+        while True:
+            # Получаем курсор для следующего запроса
+            subsequent_requests = self.subsequent_videos(parameters, self.cur)
+            if subsequent_requests['ok'] and not subsequent_requests['next']:
+                self.cur = subsequent_requests.json()['data'][
+                    'xdt_api__v1__clips__user__connection_v2']['page_info']['end_cursor']
+            else:
+                return {'ok': True, 'data': self.reels}

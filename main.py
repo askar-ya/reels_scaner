@@ -1,4 +1,4 @@
-from logic import pars_account, read_setup, update_setup, get_work_accounts, swap_account
+from logic import ParsAccountReels, read_setup, get_work_accounts, swap_account
 from logic import clean_out_excel, creat_out_excel, wright_in_excel
 import time
 
@@ -28,24 +28,16 @@ def check(reels):
         if 'error' in reels:
             if reels['error'] == 'account':
                 print('Аккаунт закрытый или удален !')
-            elif reels['error'] == 'json':
-                print("Меняем рабочий профиль")
-                return 'exit'
             else:
                 print(f'Непредвиденная ошибка, код: {reels['error']}')
-                update_setup(user[n:], q_view)
                 return 'exit'
-        else:
-            print("Меняем рабочий профиль")
-            swap_account(accounts[current_account])
-            return check(pars_account(user, q_view))
 
 try:
     # Проходимся по аккаунтам
     for n, user in enumerate(users_for_pars, 1):
         print(f'Получаем видео с аккаунта -> {user}({n}/{users_len})')
-        res = pars_account(user, q_view)
-        valid = check(res)
+        parser = ParsAccountReels(user, q_view)
+        valid = check(parser.pars())
         if valid == 'exit':
             break
 except KeyboardInterrupt:
