@@ -229,6 +229,10 @@ class ParsAccountReels:
             self.change_proxy()
             self.swap_work_profile('time_ban')
             return self.get_base_html()
+        except requests.exceptions.TooManyRedirects:
+            self.change_proxy()
+            self.reload_session()
+            return self.get_base_html()
 
 
         # проверяем статус ответа
@@ -340,7 +344,7 @@ class ParsAccountReels:
                 print(f'всего получено: {self.order * 12} видео, валидных: {len(self.reels)}')
                 return {'ok': True, 'next': False, 'data': self.reels}
             self.order += 1
-            print(f'Получено: {self.order * 12} видео', '\r')
+            print(f'Получено: {self.order * 12} видео', end='\r')
 
             if 'errors' in response.json():
                 print(f'всего получено: {self.order * 12} видео, валидных: {len(self.reels)}')
