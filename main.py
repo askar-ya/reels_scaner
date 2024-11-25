@@ -1,7 +1,7 @@
 from logic import ParsAccountReels, read_setup
 from logic import clean_out_excel, creat_out_excel, wright_in_excel
 import time
-import asyncio
+
 
 # Читаем входные данные
 q_view, users_for_pars = read_setup()

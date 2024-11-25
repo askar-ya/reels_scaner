@@ -159,7 +159,7 @@ class ParsAccountReels:
     def swap_work_profile(self, status: str):
         """Меняет рабочий аккаунт"""
 
-        with open("cookies.json", 'rw', encoding='utf-8', ) as f:
+        with open("cookies.json", 'w', encoding='utf-8', ) as f:
             """Открываем файл с аккаунтами"""
 
             accounts = json.load(f) # Загружаем список рабочих аккаунтов
@@ -176,7 +176,7 @@ class ParsAccountReels:
     def change_proxy(self):
         """Меняет рабочий прокси"""
 
-        with open("proxy.json", 'rw', encoding='utf-8', ) as f:
+        with open("proxy.json", 'w', encoding='utf-8', ) as f:
             """Открываем файл с прокси"""
             proxies = json.load(f) # Загружаем список прокси
 
