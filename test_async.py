@@ -15,11 +15,9 @@ creat_out_excel()
 excel_row = 2
 
 
-def check(reels):
+async def check(reels):
     global excel_row
     if reels['ok']:
-        time.sleep(2)
-        excel_row = wright_in_excel(reels['data'], excel_row)
         return True
     else:
         if 'error' in reels:
@@ -32,7 +30,7 @@ def check(reels):
 
 async def pars(user_name: str):
     parser = ParsAccountReels(user_name, q_view)
-    valid = check(await parser.pars())
+    valid = await check(await parser.pars())
     if valid == 'exit':
         return 'exit'
 
