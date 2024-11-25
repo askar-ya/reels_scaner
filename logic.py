@@ -271,14 +271,14 @@ def pars_account(account_name: str, q_count: int):
         try:
             response = session.post(
                 'https://www.instagram.com/graphql/query',
-                cookies=cookies, headers=headers, data=data, timeout=10)
+                cookies=cookies, headers=headers, data=data, timeout=15)
         except requests.exceptions.ConnectionError:
             print('reload session')
             session.close()
             session = reload_session()
             response = session.post(
                 'https://www.instagram.com/graphql/query',
-                cookies=cookies, headers=headers, data=data, timeout=10)
+                cookies=cookies, headers=headers, data=data, timeout=15)
 
         # Проверяем статус запроса
         if response.status_code == 200:
