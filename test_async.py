@@ -29,16 +29,25 @@ def check(reels):
                 print(f'Непредвиденная ошибка, код: {reels['error']}')
                 return 'exit'
 
+
+async def pars(user_name: str):
+    parser = ParsAccountReels(user_name, q_view)
+    valid = check(parser.pars())
+    if valid == 'exit':
+        return 'exit'
+
 async def main():
     try:
         for i in range(0, users_len, 2):
-            parser1 = ParsAccountReels(users_for_pars[i], q_view)
-            parser2 = ParsAccountReels(users_for_pars[i+1], q_view)
-            task1 = asyncio.create_task(parser1.pars())
-            task2 = asyncio.create_task(parser2.pars())
+            task1 = asyncio.create_task(pars(users_for_pars[i]))
+            task2 = asyncio.create_task(pars(users_for_pars[i+1]))
 
-            await task1
-            await task2
+            a = await task1
+            b = await task2
+            if a == 'exit':
+                break
+            if b == 'exit':
+                break
 
     except KeyboardInterrupt:
         print('программа была закрыта')
