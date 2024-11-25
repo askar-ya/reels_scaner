@@ -13,20 +13,6 @@ from openpyxl.writer.excel import save_workbook
 TIME_OUT = 30
 MAX_REDIRECT = 50
 
-def get_work_accounts():
-    names = os.listdir('cookies')
-    accounts = []
-    for name in names:
-        with open(f'cookies/{name}', 'r', encoding='utf-8') as f:
-            accounts.append(json.load(f))
-
-    return accounts
-
-
-def swap_account(account: dict):
-    with open(f'cookies.json', 'w', encoding='utf-8') as f:
-        json.dump(account, f)
-
 
 def get_proxy():
     """Получение прокси из файла"""

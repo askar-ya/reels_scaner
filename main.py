@@ -1,4 +1,4 @@
-from logic import ParsAccountReels, read_setup, get_work_accounts, swap_account
+from logic import ParsAccountReels, read_setup
 from logic import clean_out_excel, creat_out_excel, wright_in_excel
 import time
 
@@ -6,11 +6,8 @@ import time
 # Читаем входные данные
 q_view, users_for_pars = read_setup()
 users_len = len(users_for_pars)
-accounts = get_work_accounts()
-accounts_len = len(accounts)
-print(f'Загружено {accounts_len} рабочих акков')
-current_account = 0
-swap_account(accounts[current_account])
+print(f'Загружено {45} рабочих акков')
+
 
 # Обновляем старый выходной файл
 clean_out_excel()
