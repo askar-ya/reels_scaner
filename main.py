@@ -37,14 +37,9 @@ async def main():
             task1 = asyncio.create_task(parser1.pars())
             task2 = asyncio.create_task(parser2.pars())
 
-            valid = await task1
-            check(valid)
-            if valid == 'exit':
-                break
-            valid1 = await task2
-            check(valid1)
-            if valid1 == 'exit':
-                break
+            await task1
+            await task2
+
     except KeyboardInterrupt:
         print('программа была закрыта')
 
