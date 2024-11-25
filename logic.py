@@ -269,7 +269,7 @@ class ParsAccountReels:
             return self.get_base_html()
 
 
-    def first_videos(self, parameters):
+    def first_videos(self, parameters) -> dict:
         headers = self.insert_params_in_headers(parameters,
                                            self.patterns['headers_for_html']['referer'])
         data = insert_params_in_data(parameters)
@@ -301,7 +301,7 @@ class ParsAccountReels:
 
         try:
             first.json()
-            return first
+            return {'ok': False, 'res': first}
         except requests.exceptions.JSONDecodeError:
             print('\naccount time ban')
             self.swap_work_profile('time_ban')
@@ -368,9 +368,10 @@ class ParsAccountReels:
 
 
         first_request = self.first_videos(parameters)
-        videos = data_headers(first_request, self.q_count)
+
 
         if first_request['ok']:
+            videos = data_headers(first_request['res'], self.q_count)
             self.reels.extend(videos)
         else:
             return {'ok': False, 'error': first_request['error']}
@@ -382,7 +383,7 @@ class ParsAccountReels:
             print(f'всего получено: {self.order * 12} видео, валидных: {len(self.reels)}')
             return {'ok': True, 'data': self.reels}
 
-        self.cur = first_request.json()['data'][
+        self.cur = first_request['res'].json()['data'][
             'xdt_api__v1__clips__user__connection_v2']['page_info']['end_cursor']
 
         while True:
