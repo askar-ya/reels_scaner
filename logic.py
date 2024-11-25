@@ -259,8 +259,18 @@ class ParsAccountReels:
         headers['referer'] = headers['referer'].replace('name', self.account_name)
 
         # запрос
-        base = self.session.get(f'https://www.instagram.com/{self.account_name}/reels/',
-                                cookies=self.profile_cookies, headers=headers, timeout=self.time_out)
+        try:
+            base = self.session.get(f'https://www.instagram.com/{self.account_name}/reels/',
+                                    cookies=self.profile_cookies, headers=headers, timeout=self.time_out)
+        except requests.exceptions.Timeout:
+            print('\ntimout')
+            return self.get_base_html()
+        except requests.exceptions.ConnectionError:
+            print('account time ban\n')
+            self.change_proxy()
+            self.swap_work_profile('time_ban')
+            return self.get_base_html()
+
 
         # проверяем статус ответа
         if base.status_code == 200:
@@ -268,7 +278,7 @@ class ParsAccountReels:
             return base.text
         elif base.status_code in [560, 572]:
             # если рабочий аккаунт заблокирован, меняем его
-            print('work account baned')
+            print('\nwork account baned')
             self.swap_work_profile('full_ban')
             return self.get_base_html()
 
@@ -279,16 +289,25 @@ class ParsAccountReels:
         data = insert_params_in_data(parameters)
 
         # Делаем запрос к api для получения первых 12ти видео
-        first = self.session.post(
-            'https://www.instagram.com/graphql/query',
-            cookies=self.profile_cookies, headers=headers, data=data)
+        try:
+            first = self.session.post(
+                'https://www.instagram.com/graphql/query',
+                cookies=self.profile_cookies, headers=headers, data=data, timeout=self.time_out)
+        except requests.exceptions.Timeout:
+            print('\ntimout')
+            return self.first_videos(parameters)
+        except requests.exceptions.ConnectionError:
+            print('account time ban\n')
+            self.change_proxy()
+            self.swap_work_profile('time_ban')
+            return self.first_videos(parameters)
 
         # Проверяем статус запроса
         if first.status_code == 200:
             print(f'Получено: {12} видео', end='\r')
         elif first.status_code in [560, 572]:
             # если рабочий аккаунт заблокирован, меняем его
-            print('work account baned')
+            print('\nwork account baned')
             self.swap_work_profile('full_ban')
             return self.first_videos(parameters)
         else:
@@ -298,7 +317,7 @@ class ParsAccountReels:
             first.json()
             return first
         except requests.exceptions.JSONDecodeError:
-            print('account time ban')
+            print('\naccount time ban')
             self.swap_work_profile('time_ban')
             return self.first_videos(parameters)
 
@@ -314,9 +333,12 @@ class ParsAccountReels:
             response = self.session.post(
                 'https://www.instagram.com/graphql/query',
                 cookies=self.profile_cookies, headers=headers, data=data, timeout=self.time_out)
+        except requests.exceptions.Timeout:
+            print('\ntimout')
+            return self.subsequent_videos(parameters, cur)
 
         except requests.exceptions.ConnectionError:
-            print('account time ban')
+            print('account time ban\n')
             self.change_proxy()
             self.swap_work_profile('time_ban')
             response = self.subsequent_videos(parameters, data)
@@ -329,7 +351,7 @@ class ParsAccountReels:
                 print(f'всего получено: {self.order * 12} видео, валидных: {len(self.reels)}')
                 return {'ok': True, 'next': False, 'data': self.reels}
             self.order += 1
-            print(f'Получено: {self.order * 12} видео')
+            print(f'Получено: {self.order * 12} видео', '\r')
 
             if 'errors' in response.json():
                 print(f'всего получено: {self.order * 12} видео, валидных: {len(self.reels)}')
