@@ -183,6 +183,7 @@ class ParsAccountReels:
             # Проверяем не добавлен ли он уже в неактивные
             if self.proxy in proxies['ok']:
                 proxies['ok'].remove(self.proxy) # добавляем в неактивные
+                proxies['end'].append(self.proxy)  # добавляем в неактивные
                 json.dump(proxies, f) # обновляем файл
 
         self.proxy = get_proxy() # Обновляем рабочий прокси
@@ -272,6 +273,7 @@ class ParsAccountReels:
             return args
         except Exception as e:
             print(e)
+            self.swap_work_profile('time_ban')
             self.reload_session()
             html = self.get_base_html()
             return self.param_from_html(html)
