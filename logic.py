@@ -350,10 +350,10 @@ class ParsAccountReels:
                     print(f'всего получено: {self.order * 12} видео, валидных: {len(self.reels)}')
                     return {'ok': True, 'next': False, 'data': self.reels}
 
-            return {'ok': True, 'res': response}
+            return {'ok': True, 'res': response, 'next': True}
 
         else:
-            return {'ok': False, 'error': response.status_code}
+            return {'ok': False, 'error': response.status_code, 'next': False}
 
 
     def pars(self) -> dict:
