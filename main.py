@@ -30,8 +30,7 @@ def check(reels):
                 print('Аккаунт закрытый или удален !')
             elif reels['error'] == 'json':
                 print("Меняем рабочий профиль")
-                swap_account(accounts[current_account])
-                return check(pars_account(user, q_view))
+                return 'exit'
             else:
                 print(f'Непредвиденная ошибка, код: {reels['error']}')
                 update_setup(user[n:], q_view)
