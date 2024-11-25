@@ -3,7 +3,7 @@ import re
 
 import requests
 from requests.adapters import HTTPAdapter
-from urllib3.util.retry import Retry
+
 import os
 import openpyxl
 from openpyxl import load_workbook
@@ -186,6 +186,16 @@ def check_end(res):
         return True
 
 
+def reload_session():
+    session = requests.Session()
+
+    adapter = HTTPAdapter(max_retries=50)
+    session.mount('https://', adapter)
+    proxies = read_proxy(0)
+    session.proxies.update(proxies)
+    return session
+
+
 def pars_account(account_name: str, q_count: int):
     """Прасинг всех видео с аккаунта"""
 
@@ -195,16 +205,11 @@ def pars_account(account_name: str, q_count: int):
     headers = patterns['headers_for_html']
     headers['referer'] = headers['referer'].replace('name', account_name)
 
-    # сохраняем прокси
-    proxies = read_proxy(0)
 
     # запрашиваем базовый html
-    session = requests.Session()
-    retry = Retry(connect=3, backoff_factor=0.5)
-    adapter = HTTPAdapter(max_retries=retry)
-    session.mount('https://', adapter)
+    session = reload_session()
     response = session.get(f'https://www.instagram.com/{account_name}/reels/',
-                           cookies=cookies, headers=headers, proxies=proxies)
+                           cookies=cookies, headers=headers)
 
     # проверяем статус ответа
     if response.status_code == 200:
@@ -230,7 +235,7 @@ def pars_account(account_name: str, q_count: int):
     #Делаем запрос к api для получения первых 12ти видео
     response = session.post(
         'https://www.instagram.com/graphql/query',
-        cookies=cookies, headers=headers, data=data, proxies=proxies)
+        cookies=cookies, headers=headers, data=data)
 
     n = 1
 
@@ -259,13 +264,21 @@ def pars_account(account_name: str, q_count: int):
     while True:
         # Получаем курсор для следующего запроса
         cur = response.json()['data']['xdt_api__v1__clips__user__connection_v2']['page_info']['end_cursor']
+
         data = insert_cur(data, cur, parameters['target_id'])
 
         # Делаем запрос для получения следующих 12ти видео
-        response = session.post(
-            'https://www.instagram.com/graphql/query',
-            cookies=cookies, headers=headers, data=data, proxies=proxies, timeout=10)
-
+        try:
+            response = session.post(
+                'https://www.instagram.com/graphql/query',
+                cookies=cookies, headers=headers, data=data, timeout=10)
+        except requests.exceptions.ConnectionError:
+            print('reload session')
+            session.close()
+            session = reload_session()
+            response = session.post(
+                'https://www.instagram.com/graphql/query',
+                cookies=cookies, headers=headers, data=data, timeout=10)
 
         # Проверяем статус запроса
         if response.status_code == 200:
