@@ -47,3 +47,5 @@ async def main():
                 break
     except KeyboardInterrupt:
         print('программа была закрыта')
+
+asyncio.run(main())
