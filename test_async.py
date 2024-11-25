@@ -32,7 +32,7 @@ def check(reels):
 
 async def pars(user_name: str):
     parser = ParsAccountReels(user_name, q_view)
-    valid = check(parser.pars())
+    valid = check(await parser.pars())
     if valid == 'exit':
         return 'exit'
 
