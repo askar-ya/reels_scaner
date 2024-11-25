@@ -265,6 +265,7 @@ class ParsAccountReels:
         elif base.status_code in [560, 572]:
             # если рабочий аккаунт заблокирован, меняем его
             print('\nwork account baned')
+            self.change_proxy()
             self.swap_work_profile('full_ban')
             return self.get_base_html()
 
@@ -389,7 +390,7 @@ class ParsAccountReels:
         while True:
             # Получаем курсор для следующего запроса
             subsequent_requests = self.subsequent_videos(parameters, self.cur)
-            if subsequent_requests['ok'] and not subsequent_requests['next']:
+            if subsequent_requests['ok'] and subsequent_requests['next']:
                 self.cur = subsequent_requests['res'].json()['data'][
                     'xdt_api__v1__clips__user__connection_v2']['page_info']['end_cursor']
             else:
