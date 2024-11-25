@@ -1,39 +1,46 @@
-import asyncio
-import requests
+from logic import ParsAccountReels, read_setup
+from logic import clean_out_excel, creat_out_excel, wright_in_excel
 import time
-import json
+import asyncio
 
-def read_proxy() -> str:
-    with open('proxy.json', 'r') as f:
-        return json.load(f)[0]['proxy']
-
-
-def creat_requests(set_proxy: bool=None):
-    if set_proxy:
-        set_proxy = read_proxy()
-
-    request = requests.get('https://api.ipify.org', proxies=set_proxy)
-    return f"{'proxy' if set_proxy else 'clear'} -> " + request.text
+# Читаем входные данные
+q_view, users_for_pars = read_setup()
+users_len = len(users_for_pars)
+print(f'Загружено {45} рабочих акков')
 
 
-async def requests_with_proxy():
-    await asyncio.sleep(3)
-    return creat_requests(True)
+# Обновляем старый выходной файл
+clean_out_excel()
+creat_out_excel()
+excel_row = 2
 
 
-async def requests_with_out_proxy():
-    return creat_requests()
+def check(reels):
+    global excel_row
+    if reels['ok']:
+        time.sleep(2)
+        excel_row = wright_in_excel(reels['data'], excel_row)
+        return True
+    else:
+        if 'error' in reels:
+            if reels['error'] == 'account':
+                print('Аккаунт закрытый или удален !')
+            else:
+                print(f'Непредвиденная ошибка, код: {reels['error']}')
+                return 'exit'
 
+async def main():
+    try:
+        for i in range(0, users_len, 2):
+            parser1 = ParsAccountReels(users_for_pars[i], q_view)
+            parser2 = ParsAccountReels(users_for_pars[i+1], q_view)
+            task1 = asyncio.create_task(parser1.pars())
+            task2 = asyncio.create_task(parser2.pars())
 
-print(time.strftime('%X'))
+            await task1
+            await task2
 
-loop = asyncio.get_event_loop()
-tasks = []
-task1 = loop.create_task(requests_with_proxy())
-task2 = loop.create_task(requests_with_out_proxy())
-tasks.append(task1)
-tasks.append(task2)
+    except KeyboardInterrupt:
+        print('программа была закрыта')
 
-loop.run_until_complete(asyncio.wait(tasks))
-
-print(time.strftime('%X'))
+asyncio.run(main())
