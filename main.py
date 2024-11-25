@@ -29,13 +29,21 @@ def check(reels):
                 print(f'Непредвиденная ошибка, код: {reels['error']}')
                 return 'exit'
 
-try:
-    # Проходимся по аккаунтам
-    for n, user in enumerate(users_for_pars, 1):
-        print(f'Получаем видео с аккаунта -> {user}({n}/{users_len})')
-        parser = ParsAccountReels(user, q_view)
-        valid = check(parser.pars())
-        if valid == 'exit':
-            break
-except KeyboardInterrupt:
-    print('программа была закрыта')
+async def main():
+    try:
+        for i in range(0, users_len, 2):
+            parser1 = ParsAccountReels(users_for_pars[i], q_view)
+            parser2 = ParsAccountReels(users_for_pars[i+1], q_view)
+            task1 = asyncio.create_task(parser1.pars())
+            task2 = asyncio.create_task(parser2.pars())
+
+            valid = await task1
+            check(valid)
+            if valid == 'exit':
+                break
+            valid1 = await task2
+            check(valid1)
+            if valid1 == 'exit':
+                break
+    except KeyboardInterrupt:
+        print('программа была закрыта')
